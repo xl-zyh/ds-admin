@@ -12,6 +12,7 @@
 - [认证 Auth](#1-认证-auth)
 - [用户管理 Users](#2-用户管理-users)
 - [角色管理 Roles](#3-角色管理-roles)
+- [二维码签到 QrCheckin](#4-二维码签到-qrcheckin)
 - [新增接口规范](#新增接口规范)
 
 ---
@@ -59,6 +60,8 @@
 | `role:create` | 新增角色 |
 | `role:update` | 编辑角色 |
 | `role:delete` | 删除角色 |
+| `qr-checkin:read` | 查看签到数据 |
+| `qr-checkin:create` | 上报签到数据 |
 
 > 超管角色（`isSuper = true`）隐式拥有所有权限，无需配置权限码。
 
@@ -305,6 +308,138 @@ Response `200`：返回更新后的完整角色对象
 Response `200`：无返回体（空）
 
 Error: `400 — 禁止删除最后一个超级管理员角色`
+
+---
+
+## 4. 二维码签到 QrCheckin
+
+**所有接口需认证 + 权限** — Header: `Authorization: Bearer <token>`
+
+> 数据以小时为单位聚合上报，采集时间（acqTime）表示时段结束时间：
+> 如 `18:00:00` 代表 17:00-18:00 时段的进场/出场人数。
+
+### GET /qr-checkin — 分页查询签到记录
+
+**权限**：`qr-checkin:read`
+
+Query:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `venueId` | string | 否 | 场馆编号 |
+| `provinceId` | int | 否 | 省份编号 |
+| `cityId` | int | 否 | 城市编号 |
+| `districtId` | int | 否 | 区县编号 |
+| `startTime` | string | 否 | 采集时间起始，格式 `yyyy-MM-dd HH:mm:ss` |
+| `endTime` | string | 否 | 采集时间截止 |
+| `page` | int | 否 | 页码，默认 1 |
+| `pageSize` | int | 否 | 每页条数，默认 20 |
+
+Response `200`:
+```json
+{
+  "list": [
+    {
+      "id": 1,
+      "provinceId": 330000,
+      "cityId": 330100,
+      "districtId": 330102,
+      "venueId": "VEN20260001",
+      "acqTime": "2026-06-14T18:00:00.000Z",
+      "acqNumOfPeople": 120,
+      "leaNumOfPeople": 80,
+      "deviceId": "DEV-A001",
+      "isCoreArea": 1,
+      "createdAt": "2026-06-14T18:30:00.000Z"
+    }
+  ],
+  "total": 100,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+---
+
+### POST /qr-checkin/batch — 批量上报签到数据
+
+**权限**：`qr-checkin:create`
+
+Request:
+```json
+[
+  {
+    "provinceId": 330000,
+    "cityId": 330100,
+    "districtId": 330102,
+    "venueId": "VEN20260001",
+    "acqTime": "2026-06-14 18:00:00",
+    "acqNumOfPeople": 120,
+    "leaNumOfPeople": 80,
+    "deviceId": "DEV-A001",
+    "isCoreArea": 1
+  },
+  {
+    "provinceId": 330000,
+    "cityId": 330100,
+    "districtId": 330102,
+    "venueId": "VEN20260001",
+    "acqTime": "2026-06-14 19:00:00",
+    "acqNumOfPeople": 95,
+    "leaNumOfPeople": 110,
+    "deviceId": "DEV-A001",
+    "isCoreArea": 1
+  }
+]
+```
+
+Response `200`：返回已保存的记录数组（含自动生成的 id、createdAt）
+
+---
+
+### GET /qr-checkin/stats/hour — 按小时聚合统计
+
+**权限**：`qr-checkin:read`
+
+Query:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `date` | string | **是** | 日期，格式 `yyyy-MM-dd` |
+| `venueId` | string | 否 | 场馆编号 |
+| `provinceId` | int | 否 | 省份编号 |
+| `cityId` | int | 否 | 城市编号 |
+| `districtId` | int | 否 | 区县编号 |
+
+Response `200`:
+```json
+[
+  { "hour": "2026-06-14T08:00:00.000Z", "totalIn": "120", "totalOut": "80" },
+  { "hour": "2026-06-14T09:00:00.000Z", "totalIn": "200", "totalOut": "150" }
+]
+```
+
+> `totalIn` / `totalOut` 为字符串，前端需转为数字。
+
+---
+
+### GET /qr-checkin/stats/venue — 按场馆聚合统计
+
+**权限**：`qr-checkin:read`
+
+Query:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `date` | string | **是** | 日期，格式 `yyyy-MM-dd` |
+| `provinceId` | int | 否 | 省份编号 |
+| `cityId` | int | 否 | 城市编号 |
+| `districtId` | int | 否 | 区县编号 |
+
+Response `200`:
+```json
+[
+  { "venueId": "VEN20260001", "totalIn": "415", "totalOut": "340" },
+  { "venueId": "VEN20260002", "totalIn": "280", "totalOut": "210" }
+]
+```
 
 ---
 

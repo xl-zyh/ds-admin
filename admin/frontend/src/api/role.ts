@@ -6,12 +6,12 @@ export const roleApi = {
   list() {
     return http.get('/roles').then((r) => r.data)
   },
-  /** POST /roles — 创建角色（可指定 isSuper 标记） */
-  create(data: { name: string; description?: string; isSuper?: boolean }) {
+  /** POST /roles — 创建角色（可指定 isSuper 标记 + 权限列表） */
+  create(data: { name: string; description?: string; isSuper?: boolean; permissions?: string[] }) {
     return http.post('/roles', data).then((r) => r.data)
   },
-  /** PUT /roles/:id — 更新角色信息 */
-  update(id: number, data: Partial<{ name: string; description: string; isActive: boolean; isSuper: boolean }>) {
+  /** PUT /roles/:id — 更新角色信息（含权限配置） */
+  update(id: number, data: Partial<{ name: string; description: string; isActive: boolean; isSuper: boolean; permissions: string[] }>) {
     return http.put(`/roles/${id}`, data).then((r) => r.data)
   },
   /** DELETE /roles/:id — 删除角色（超管受保护） */

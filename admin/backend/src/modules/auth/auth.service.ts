@@ -51,7 +51,7 @@ export class AuthService {
   /**
    * 登录 — 校验凭据后签发 JWT
    *
-   * JWT payload: { sub: userId, username, roleId }
+   * JWT payload: { sub: userId, username, nickname, roleId, roleName, isSuper }
    * 有效期：7 天
    *
    * @returns access_token 及不包含密码的用户信息
@@ -59,10 +59,13 @@ export class AuthService {
   async login(username: string, password: string) {
     const user = await this.validateUser(username, password);
     const isSuper = user.role?.isSuper || false;
+    const roleName = user.role?.name || null;
     const payload = {
       sub: user.id,
       username: user.username,
+      nickname: user.nickname,
       roleId: user.roleId,
+      roleName,
       isSuper,
     };
     return {

@@ -10,7 +10,11 @@
       <el-table-column prop="username" label="用户名" width="120" />
       <el-table-column prop="nickname" label="昵称" width="120" />
       <el-table-column prop="email" label="邮箱" />
-      <el-table-column prop="role?.name" label="角色" width="100" />
+      <el-table-column label="角色" width="100">
+        <template #default="{ row }">
+          {{ row.role?.name || '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="90">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.status)" size="small">
@@ -110,9 +114,22 @@ function statusTagType(val: string) {
 
 const form = ref({ username: '', password: '', nickname: '', email: '', roleId: null as number | null, status: 'normal' })
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { pattern: /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/, message: '以字母开头，3-20位字母/数字/下划线', trigger: 'blur' },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { pattern: /^.{6,20}$/, message: '6-20位字符', trigger: 'blur' },
+  ],
+  nickname: [
+    { required: true, message: '请输入昵称', trigger: 'blur' },
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9]{2,20}$/, message: '2-20位中文/字母/数字', trigger: 'blur' },
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/, message: '请输入正确的邮箱格式', trigger: 'blur' },
+  ],
 }
 
 async function fetchData() {
@@ -143,7 +160,10 @@ async function handleSave() {
   saving.value = true
   try {
     if (editingId.value) {
-      const { username, password, ...data } = form.value
+      const { username, password, roleId, ...rest } = form.value
+      const data: any = { ...rest }
+      // 只有 roleId 有实际值时再发送，避免 null 覆盖数据库中的角色
+      if (roleId) data.roleId = roleId
       await userApi.update(editingId.value, data)
     } else {
       await userApi.create(form.value as any)

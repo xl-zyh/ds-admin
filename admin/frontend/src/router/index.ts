@@ -28,6 +28,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/role/index.vue'),
         meta: { title: '角色管理', permission: 'role:read' },
       },
+      {
+        path: 'qr-checkin',
+        name: 'QrCheckin',
+        component: () => import('../views/qr-checkin/index.vue'),
+        meta: { title: '二维码签到', permission: 'qr-checkin:read' },
+      },
+      {
+        path: 'flow-summary',
+        name: 'FlowSummary',
+        component: () => import('../views/flow-summary/index.vue'),
+        meta: { title: '客流明细', permission: 'flow-summary:read' },
+      },
+      {
+        path: 'operation-logs',
+        name: 'OperationLogs',
+        component: () => import('../views/operation-log/index.vue'),
+        meta: { title: '操作日志', permission: 'operation-log:read' },
+      },
     ],
   },
 ]

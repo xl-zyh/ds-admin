@@ -64,6 +64,21 @@
             系统中已存在超管角色，只能有一个
           </span>
         </el-form-item>
+
+        <!-- 功能权限：非超管角色可选 -->
+        <el-form-item label="功能权限" v-if="!form.isSuper">
+          <div style="width:100%;border:1px solid #ebeef5;border-radius:4px;padding:12px">
+            <div style="margin-bottom:8px;color:#909399;font-size:13px">是否为该角色开通以下功能的权限</div>
+            <div v-for="mod in permissionModules" :key="mod.key" style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #f2f2f2">
+              <span style="width:80px;font-size:14px">{{ mod.label }}</span>
+              <el-radio-group v-model="form.modulePerms[mod.key]" size="small">
+                <el-radio value="full">是</el-radio>
+                <el-radio value="readonly">只浏览</el-radio>
+                <el-radio value="none">否</el-radio>
+              </el-radio-group>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="状态" v-if="editingId">
           <el-switch v-model="form.isActive" />
         </el-form-item>
@@ -91,7 +106,38 @@ const editingId = ref<number | null>(null)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
 
-const form = ref({ name: '', description: '', isSuper: false, isActive: true })
+/** 功能模块与权限码映射 */
+const permissionModules = [
+  { key: 'user', label: '用户管理', perms: ['user:read', 'user:create', 'user:update', 'user:delete'] },
+  { key: 'role', label: '角色管理', perms: ['role:read', 'role:create', 'role:update', 'role:delete'] },
+  { key: 'qrCheckin', label: '二维码签到', perms: ['qr-checkin:read', 'qr-checkin:create'] },
+  { key: 'flowSummary', label: '客流明细', perms: ['flow-summary:read'] },
+  { key: 'operationLog', label: '操作日志', perms: ['operation-log:read'] },
+]
+
+/** 权限码列表 → 模块状态字典 */
+function permissionsToModules(perms: string[]): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const mod of permissionModules) {
+    const hasAll = mod.perms.every((p) => perms.includes(p))
+    const hasRead = perms.includes(mod.perms[0])
+    result[mod.key] = hasAll ? 'full' : hasRead ? 'readonly' : 'none'
+  }
+  return result
+}
+
+/** 模块状态字典 → 权限码列表 */
+function modulePermsToPermissions(modulePerms: Record<string, string>): string[] {
+  const perms: string[] = []
+  for (const mod of permissionModules) {
+    const state = modulePerms[mod.key] || 'none'
+    if (state === 'full') perms.push(...mod.perms)
+    else if (state === 'readonly') perms.push(mod.perms[0])
+  }
+  return perms
+}
+
+const form = ref({ name: '', description: '', isSuper: false, isActive: true, modulePerms: { user: 'none', role: 'none', qrCheckin: 'none', flowSummary: 'none', operationLog: 'none' } })
 const rules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
 }
@@ -122,10 +168,16 @@ async function fetchData() {
 function openDialog(row?: any) {
   if (row) {
     editingId.value = row.id
-    form.value = { name: row.name, description: row.description, isSuper: row.isSuper, isActive: row.isActive }
+    form.value = {
+      name: row.name,
+      description: row.description,
+      isSuper: row.isSuper,
+      isActive: row.isActive,
+      modulePerms: permissionsToModules(row.permissions || []),
+    }
   } else {
     editingId.value = null
-    form.value = { name: '', description: '', isSuper: false, isActive: true }
+    form.value = { name: '', description: '', isSuper: false, isActive: true, modulePerms: { user: 'none', role: 'none', qrCheckin: 'none', flowSummary: 'none', operationLog: 'none' } }
   }
   dialogVisible.value = true
 }
@@ -136,9 +188,25 @@ async function handleSave() {
   saving.value = true
   try {
     if (editingId.value) {
-      await roleApi.update(editingId.value, form.value)
+      const payload: any = {
+        name: form.value.name,
+        description: form.value.description,
+        isActive: form.value.isActive,
+      }
+      if (!form.value.isSuper) {
+        payload.permissions = modulePermsToPermissions(form.value.modulePerms)
+      }
+      await roleApi.update(editingId.value, payload)
     } else {
-      await roleApi.create({ name: form.value.name, description: form.value.description, isSuper: form.value.isSuper })
+      const payload: any = {
+        name: form.value.name,
+        description: form.value.description,
+        isSuper: form.value.isSuper,
+      }
+      if (!form.value.isSuper) {
+        payload.permissions = modulePermsToPermissions(form.value.modulePerms)
+      }
+      await roleApi.create(payload)
     }
     dialogVisible.value = false
     await fetchData()

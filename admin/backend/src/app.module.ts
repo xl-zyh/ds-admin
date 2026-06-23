@@ -1,8 +1,14 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/role/role.module';
+import { QrCheckinModule } from './modules/qr-checkin/qr-checkin.module';
+import { FlowSummaryModule } from './modules/flow-summary/flow-summary.module';
+import { OperationLogModule } from './modules/operation-log/operation-log.module';
+import { LogInterceptor } from './common/interceptors/log.interceptor';
 
 @Module({
   imports: [
@@ -16,9 +22,16 @@ import { RoleModule } from './modules/role/role.module';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+    ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
     RoleModule,
+    QrCheckinModule,
+    FlowSummaryModule,
+    OperationLogModule,
+  ],
+  providers: [
+    { provide: APP_INTERCEPTOR, useClass: LogInterceptor },
   ],
 })
 export class AppModule {}

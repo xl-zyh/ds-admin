@@ -17,6 +17,18 @@
           <el-icon><Setting /></el-icon>
           <span>角色管理</span>
         </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('qr-checkin:read')" index="/qr-checkin">
+          <el-icon><Checked /></el-icon>
+          <span>二维码签到</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('flow-summary:read')" index="/flow-summary">
+          <el-icon><List /></el-icon>
+          <span>客流明细</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('operation-log:read')" index="/operation-logs">
+          <el-icon><Document /></el-icon>
+          <span>操作日志</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -37,7 +49,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../store/auth'
-import { User, Setting } from '@element-plus/icons-vue'
+import { User, Setting, Checked, List, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

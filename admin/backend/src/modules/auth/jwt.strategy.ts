@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
  * JWT 策略 — 解析 Bearer Token，提取用户信息挂载到 request.user
  *
  * request.user 结构：
- *   { sub: userId, username: string, roleId: number | null, isSuper: boolean }
+ *   { sub: userId, username, nickname, roleId, roleName, isSuper }
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -21,13 +21,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: {
     sub: number;
     username: string;
+    nickname: string;
     roleId: number | null;
+    roleName: string | null;
     isSuper: boolean;
   }) {
     return {
       sub: payload.sub,
       username: payload.username,
+      nickname: payload.nickname,
       roleId: payload.roleId,
+      roleName: payload.roleName,
       isSuper: payload.isSuper,
     };
   }
