@@ -40,6 +40,20 @@ export const OperationLogPerm = {
   READ: 'operation-log:read',
 } as const;
 
+/** 超管密钥管理权限 */
+export const SuperAdminPerm = {
+  SET_KEY: 'super-admin:set-key',
+  VERIFY_KEY: 'super-admin:verify-key',
+} as const;
+
+/** 设备编码管理权限 */
+export const DevicePerm = {
+  READ: 'device:read',
+  GENERATE: 'device:generate',
+  SCAN: 'device:scan',
+  DELETE: 'device:delete',
+} as const;
+
 /** 所有权限码的集合 */
 export const ALL_PERMISSIONS = [
   ...Object.values(UserPerm),
@@ -47,6 +61,8 @@ export const ALL_PERMISSIONS = [
   ...Object.values(QrCheckinPerm),
   ...Object.values(FlowSummaryPerm),
   ...Object.values(OperationLogPerm),
+  ...Object.values(SuperAdminPerm),
+  ...Object.values(DevicePerm),
 ] as const;
 
 /** 权限码类型 */

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -94,12 +94,23 @@ export class UserService {
    * 更新用户信息 + 激活/锁定等状态变更
    *
    * 状态校验：status 只能是 UserStatus 枚举中的值
+   * 超管保护：禁止将超管账号状态设为非正常
    */
-  async update(id: number, data: Partial<User>): Promise<User | null> {
+  async update(id: number, data: Partial<User> & { superAdminKey?: string }): Promise<User | null> {
     if (data.status && !Object.values(UserStatus).includes(data.status)) {
       throw new BadRequestException('无效的用户状态');
     }
-    await this.userRepo.update(id, data);
+
+    // 禁止将超管账号设为非正常状态
+    if (data.status && data.status !== UserStatus.NORMAL) {
+      const existing = await this.findById(id);
+      if (existing?.role?.isSuper) {
+        throw new ForbiddenException('禁止将超级管理员账号设为非正常状态');
+      }
+    }
+
+    const { superAdminKey, ...updateData } = data;
+    await this.userRepo.update(id, updateData);
     return this.findById(id);
   }
 

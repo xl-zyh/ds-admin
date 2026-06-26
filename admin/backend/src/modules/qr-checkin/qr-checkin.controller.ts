@@ -89,6 +89,7 @@ export class QrCheckinController {
    * @query provinceId 省份编号（可选）
    * @query cityId     城市编号（可选）
    * @query districtId 区县编号（可选）
+   * @query deviceId   
    */
   @Get('stats/hour')
   @RequirePermission(QrCheckinPerm.READ)

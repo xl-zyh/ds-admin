@@ -14,8 +14,8 @@ export const userApi = {
   update(id: number, data: Partial<{ nickname: string; email: string; roleId: number; status: string }>) {
     return http.put(`/users/${id}`, data).then((r) => r.data)
   },
-  /** DELETE /users/:id — 删除用户 */
-  remove(id: number) {
-    return http.delete(`/users/${id}`).then((r) => r.data)
+  /** DELETE /users/:id — 删除用户（超管需附带 superAdminKey） */
+  remove(id: number, superAdminKey?: string) {
+    return http.delete(`/users/${id}`, { data: superAdminKey ? { superAdminKey } : undefined }).then((r) => r.data)
   },
 }

@@ -4,7 +4,7 @@ import { authApi } from '../api/auth'
 
 /** 认证状态管理 — JWT token + 用户信息 + 路由守卫验证 + 权限 */
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('token') || '')
+  const token = ref(sessionStorage.getItem('token') || '')
   const user = ref<any>(null)
   const verified = ref(false) // 是否已通过服务端验证（token 有效 + 状态正常）
   const isSuper = ref(false) // 当前用户是否为超管
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(username: string, password: string) {
     const res = await authApi.login(username, password)
     token.value = res.access_token
-    localStorage.setItem('token', res.access_token)
+    sessionStorage.setItem('token', res.access_token)
     // 必须调 fetchProfile 才能拿到 role.permissions，否则路由守卫权限校验会失败
     await fetchProfile()
     verified.value = true
@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     isSuper.value = false
     permissions.value = []
     verified.value = false
-    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
   }
 
   /** 获取当前用户完整信息（用于刷新页面后恢复用户状态） */

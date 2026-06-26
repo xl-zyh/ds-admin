@@ -8,6 +8,9 @@ import { RoleModule } from './modules/role/role.module';
 import { QrCheckinModule } from './modules/qr-checkin/qr-checkin.module';
 import { FlowSummaryModule } from './modules/flow-summary/flow-summary.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { DeviceModule } from './modules/device/device.module';
+import { VenueModule } from './modules/venue/venue.module';
 import { LogInterceptor } from './common/interceptors/log.interceptor';
 
 @Module({
@@ -29,6 +32,9 @@ import { LogInterceptor } from './common/interceptors/log.interceptor';
     QrCheckinModule,
     FlowSummaryModule,
     OperationLogModule,
+    SuperAdminModule,
+    DeviceModule,
+    VenueModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: LogInterceptor },

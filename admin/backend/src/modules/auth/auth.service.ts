@@ -77,7 +77,6 @@ export class AuthService {
         email: user.email,
         roleId: user.roleId,
         status: user.status,
-        isSuper,
       },
     };
   }

@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { Role } from './role.entity';
+import { User } from '../user/user.entity';
 
 /**
  * 角色服务 — 角色 CRUD + 超管保护逻辑
@@ -11,12 +12,15 @@ import { Role } from './role.entity';
  * 2. 创建超管角色时，检查是否已存在活动的超管
  * 3. 更新为超管角色时，检查是否已有其他活动的超管
  * 4. 删除超管角色时，检查是否会导致无超管（防御性）
+ * 5. 删除超管角色时，检查是否有用户正在使用该角色
  */
 @Injectable()
 export class RoleService {
   constructor(
     @InjectRepository(Role)
     private roleRepo: Repository<Role>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
 
   /** 获取所有角色 */
@@ -38,6 +42,11 @@ export class RoleService {
       });
     }
     return this.roleRepo.count({ where });
+  }
+
+  /** 统计使用指定角色的用户数 */
+  async countUsersByRole(roleId: number): Promise<number> {
+    return this.userRepo.count({ where: { roleId } });
   }
 
   /**
@@ -63,10 +72,17 @@ export class RoleService {
    * 更新角色信息（名称、描述、启用/禁用、超管标记）
    *
    * 如果 isSuper 从 false 改为 true，且已有其他活动的超管角色，拒绝更新
+   * 如果目标角色是超管角色，禁止将其禁用
    *
    * @throws 403 已存在其他超管角色
+   * @throws 403 禁止禁用超级管理员角色
    */
   async update(id: number, data: Partial<Role>): Promise<Role | null> {
+    const existing = await this.findById(id);
+    if (existing?.isSuper && data.isActive === false) {
+      throw new ForbiddenException('禁止禁用超级管理员角色');
+    }
+
     if (data.isSuper) {
       const count = await this.countSuperAdmins(id);
       if (count > 0) {
@@ -82,10 +98,11 @@ export class RoleService {
    * 删除角色（含超管保护）
    *
    * 如果目标角色是超级管理员：
-   *   统计当前所有活动的超管角色数量
-   *   若 ≤ 1，拒绝删除（403 Forbidden）
+   *   1. 检查是否有用户正在使用该角色 → 有则拒绝
+   *   2. 统计当前所有活动的超管角色数量 → 若 ≤ 1，拒绝删除（403 Forbidden）
    *
    * @throws 403 角色不存在
+   * @throws 403 有用户正在使用该超管角色，禁止删除
    * @throws 403 禁止删除最后一个超级管理员角色
    */
   async remove(id: number): Promise<void> {
@@ -93,6 +110,11 @@ export class RoleService {
     if (!role) throw new ForbiddenException('角色不存在');
 
     if (role.isSuper) {
+      const userCount = await this.countUsersByRole(id);
+      if (userCount > 0) {
+        throw new ForbiddenException(`有 ${userCount} 个用户正在使用该超管角色，禁止删除`);
+      }
+
       const count = await this.countSuperAdmins();
       if (count <= 1) {
         throw new ForbiddenException('禁止删除最后一个超级管理员角色');

@@ -25,7 +25,7 @@
       <el-table-column v-if="auth.hasPermission('user:update') || auth.hasPermission('user:delete')" label="操作" width="180">
         <template #default="{ row }">
           <el-button v-if="auth.hasPermission('user:update')" size="small" @click="openDialog(row)">编辑</el-button>
-          <el-popconfirm v-if="auth.hasPermission('user:delete')" title="确认删除？" @confirm="handleDelete(row.id)">
+          <el-popconfirm v-if="auth.hasPermission('user:delete')" :title="row.role?.isSuper ? '删除超管账号需验证操作密钥，确认继续？' : '确认删除？'" @confirm="handleDelete(row)">
             <template #reference>
               <el-button size="small" type="danger">删除</el-button>
             </template>
@@ -60,6 +60,7 @@
               :key="s.value"
               :label="s.label"
               :value="s.value"
+              :disabled="isEditingSuperAdmin && s.value !== 'normal'"
             />
           </el-select>
         </el-form-item>
@@ -69,14 +70,37 @@
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 超管操作密钥验证弹窗 -->
+    <el-dialog v-model="superAdminKeyDialogVisible" title="超管操作验证" width="400px" :close-on-click-modal="false">
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      >
+        {{ pendingAction === 'edit' ? '修改超管账号需要验证操作密钥' : '删除超管账号需要验证操作密钥' }}
+      </el-alert>
+      <el-form ref="keyFormRef" :model="keyForm" :rules="keyRules" label-width="0">
+        <el-form-item prop="superAdminKey">
+          <el-input v-model="keyForm.superAdminKey" type="password" show-password placeholder="请输入超管操作密钥" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="superAdminKeyDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="verifying" @click="handleVerifyAndExecute">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { userApi } from '../../api/user'
 import { roleApi } from '../../api/role'
+import { superAdminApi } from '../../api/super-admin'
 import { useAuthStore } from '../../store/auth'
+import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 
 const auth = useAuthStore()
@@ -87,6 +111,25 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
+
+// 超管密钥验证
+const superAdminKeyDialogVisible = ref(false)
+const verifying = ref(false)
+const keyFormRef = ref<FormInstance>()
+const keyForm = ref({ superAdminKey: '' })
+const pendingAction = ref<'edit' | 'delete'>('edit')
+const pendingUserId = ref<number | null>(null)
+
+const keyRules = {
+  superAdminKey: [{ required: true, message: '请输入超管操作密钥', trigger: 'blur' }],
+}
+
+/** 当前编辑的用户是否为超管 */
+const isEditingSuperAdmin = computed(() => {
+  if (!editingId.value) return false
+  const user = users.value.find((u) => u.id === editingId.value)
+  return user?.role?.isSuper || false
+})
 
 const statusOptions = [
   { value: 'normal', label: '正常' },
@@ -157,27 +200,77 @@ function openDialog(row?: any) {
 async function handleSave() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+
+  // 如果编辑的是超管账号，需要先验证密钥
+  if (isEditingSuperAdmin.value) {
+    pendingAction.value = 'edit'
+    pendingUserId.value = editingId.value
+    keyForm.value.superAdminKey = ''
+    superAdminKeyDialogVisible.value = true
+    return
+  }
+
+  await doSave()
+}
+
+async function doSave() {
   saving.value = true
   try {
     if (editingId.value) {
       const { username, password, roleId, ...rest } = form.value
       const data: any = { ...rest }
-      // 只有 roleId 有实际值时再发送，避免 null 覆盖数据库中的角色
       if (roleId) data.roleId = roleId
+      // 如果是超管，附带密钥
+      if (isEditingSuperAdmin.value) {
+        data.superAdminKey = keyForm.value.superAdminKey
+      }
       await userApi.update(editingId.value, data)
     } else {
       await userApi.create(form.value as any)
     }
     dialogVisible.value = false
+    superAdminKeyDialogVisible.value = false
     await fetchData()
   } finally {
     saving.value = false
   }
 }
 
-async function handleDelete(id: number) {
-  await userApi.remove(id)
+async function handleDelete(row: any) {
+  if (row.role?.isSuper) {
+    pendingAction.value = 'delete'
+    pendingUserId.value = row.id
+    keyForm.value.superAdminKey = ''
+    superAdminKeyDialogVisible.value = true
+    return
+  }
+  await doDelete(row.id)
+}
+
+async function doDelete(id: number) {
+  await userApi.remove(id, keyForm.value.superAdminKey)
+  superAdminKeyDialogVisible.value = false
   await fetchData()
+}
+
+async function handleVerifyAndExecute() {
+  const valid = await keyFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  verifying.value = true
+  try {
+    const { valid: keyValid } = await superAdminApi.verifyKey(keyForm.value.superAdminKey)
+    if (!keyValid) {
+      ElMessage.error('超管操作密钥验证失败')
+      return
+    }
+    if (pendingAction.value === 'edit') {
+      await doSave()
+    } else {
+      await doDelete(pendingUserId.value!)
+    }
+  } finally {
+    verifying.value = false
+  }
 }
 
 onMounted(fetchData)

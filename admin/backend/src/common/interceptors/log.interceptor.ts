@@ -35,6 +35,8 @@ export class LogInterceptor implements NestInterceptor {
     'qr-checkin': '二维码签到',
     'flow-summary': '客流明细',
     'operation-logs': '操作日志',
+    devices: '设备编码',
+    'super-admin': '超管密钥',
   };
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {

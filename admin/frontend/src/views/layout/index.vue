@@ -29,6 +29,18 @@
           <el-icon><Document /></el-icon>
           <span>操作日志</span>
         </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('super-admin:set-key')" index="/super-admin-key">
+          <el-icon><Lock /></el-icon>
+          <span>超管密钥</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('device:read')" index="/devices">
+          <el-icon><Cpu /></el-icon>
+          <span>设备编码</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.hasPermission('venue:read')" index="/map">
+          <el-icon><MapLocation /></el-icon>
+          <span>地标地图</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -49,7 +61,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../store/auth'
-import { User, Setting, Checked, List, Document } from '@element-plus/icons-vue'
+import { User, Setting, Checked, List, Document, Lock, Cpu, MapLocation } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

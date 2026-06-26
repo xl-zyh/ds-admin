@@ -46,6 +46,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/operation-log/index.vue'),
         meta: { title: '操作日志', permission: 'operation-log:read' },
       },
+      {
+        path: 'super-admin-key',
+        name: 'SuperAdminKey',
+        component: () => import('../views/super-admin-key/index.vue'),
+        meta: { title: '超管密钥', permission: 'super-admin:set-key' },
+      },
+      {
+        path: 'devices',
+        name: 'Devices',
+        component: () => import('../views/device/index.vue'),
+        meta: { title: '设备编码', permission: 'device:read' },
+      },
+      {
+        path: 'map',
+        name: 'Map',
+        component: () => import('../views/map/index.vue'),
+        meta: { title: '地标地图', permission: 'venue:read' },
+      },
     ],
   },
 ]

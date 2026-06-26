@@ -80,7 +80,10 @@
           </div>
         </el-form-item>
         <el-form-item label="状态" v-if="editingId">
-          <el-switch v-model="form.isActive" />
+          <el-switch v-model="form.isActive" :disabled="form.isSuper" />
+          <span v-if="form.isSuper" style="margin-left:8px;color:#e6a23c;font-size:12px">
+            超管角色无法禁用
+          </span>
         </el-form-item>
       </el-form>
       <template #footer>
